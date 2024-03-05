@@ -44,6 +44,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
   char buf[sizeof(file_number)];
   EncodeFixed64(buf, file_number);
   Slice key(buf, sizeof(buf));
+  // 先从cache中Lookup，如果没有找到，则尝试重新打开文件
   *handle = cache_->Lookup(key);
   if (*handle == nullptr) {
     std::string fname = TableFileName(dbname_, file_number);
@@ -51,11 +52,13 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
     Table* table = nullptr;
     s = env_->NewRandomAccessFile(fname, &file);
     if (!s.ok()) {
+      // 为了兼容老的逻辑？
       std::string old_fname = SSTTableFileName(dbname_, file_number);
       if (env_->NewRandomAccessFile(old_fname, &file).ok()) {
         s = Status::OK();
       }
     }
+    // 先把index block放到内存中，至于data block，只能是在读具体的key时才会放在内存中cache
     if (s.ok()) {
       s = Table::Open(options_, file, file_size, &table);
     }
