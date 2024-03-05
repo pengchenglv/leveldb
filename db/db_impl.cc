@@ -1204,7 +1204,9 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
   w.done = false;
 
   MutexLock l(&mutex_);
+  // 将writer放到一个队列中
   writers_.push_back(&w);
+  // 如果刚刚入队的writer 没有done，且不是队首，则wait
   while (!w.done && &w != writers_.front()) {
     w.cv.Wait();
   }
@@ -1227,6 +1229,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
     // into mem_.
     {
       mutex_.Unlock();
+      // 写入wal
       status = log_->AddRecord(WriteBatchInternal::Contents(write_batch));
       bool sync_error = false;
       if (status.ok() && options.sync) {
@@ -1235,6 +1238,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
           sync_error = true;
         }
       }
+      // 写入memtable
       if (status.ok()) {
         status = WriteBatchInternal::InsertInto(write_batch, mem_);
       }
@@ -1247,7 +1251,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
       }
     }
     if (write_batch == tmp_batch_) tmp_batch_->Clear();
-
+    // 更新last_sequence
     versions_->SetLastSequence(last_sequence);
   }
 
@@ -1272,6 +1276,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
 
 // REQUIRES: Writer list must be non-empty
 // REQUIRES: First writer must have a non-null batch
+// 本质上就是构建一个WriteBatch
 WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
   mutex_.AssertHeld();
   assert(!writers_.empty());
@@ -1330,10 +1335,12 @@ Status DBImpl::MakeRoomForWrite(bool force) {
   while (true) {
     if (!bg_error_.ok()) {
       // Yield previous error
+      // 有错误直接退出
       s = bg_error_;
       break;
     } else if (allow_delay && versions_->NumLevelFiles(0) >=
                                   config::kL0_SlowdownWritesTrigger) {
+      // L0层有较多的file，降低写入的速率
       // We are getting close to hitting a hard limit on the number of
       // L0 files.  Rather than delaying a single write by several
       // seconds when we hit the hard limit, start delaying each
@@ -1346,19 +1353,23 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       mutex_.Lock();
     } else if (!force &&
                (mem_->ApproximateMemoryUsage() <= options_.write_buffer_size)) {
+      // mem table里还有空间
       // There is room in current memtable
       break;
     } else if (imm_ != nullptr) {
       // We have filled up the current memtable, but the previous
       // one is still being compacted, so we wait.
       Log(options_.info_log, "Current memtable full; waiting...\n");
+      // 达到触发compaction的条件，需等待之前的compaction完成
       background_work_finished_signal_.Wait();
     } else if (versions_->NumLevelFiles(0) >= config::kL0_StopWritesTrigger) {
       // There are too many level-0 files.
       Log(options_.info_log, "Too many L0 files; waiting...\n");
+      // L0的文件数达到触发compaction的条件，等待之前的compaction完成
       background_work_finished_signal_.Wait();
     } else {
       // Attempt to switch to a new memtable and trigger compaction of old
+      // memtable 没有空间了，Switch wal，并且开启新的memtable, 将当前的memtable转换为immutable table
       assert(versions_->PrevLogNumber() == 0);
       uint64_t new_log_number = versions_->NewFileNumber();
       WritableFile* lfile = nullptr;
