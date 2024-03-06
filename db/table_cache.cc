@@ -72,6 +72,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
       TableAndFile* tf = new TableAndFile;
       tf->file = file;
       tf->table = table;
+      // 此处的key是file name，file就是sst
       *handle = cache_->Insert(key, tf, 1, &DeleteEntry);
     }
   }
