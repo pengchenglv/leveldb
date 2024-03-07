@@ -43,9 +43,11 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
   Status s;
   char buf[sizeof(file_number)];
   EncodeFixed64(buf, file_number);
+  // 基于file_number构造一个key
   Slice key(buf, sizeof(buf));
   // 先从cache中Lookup，如果没有找到，则尝试重新打开文件
   *handle = cache_->Lookup(key);
+  // 没有改文件的cache，需要重新获取
   if (*handle == nullptr) {
     std::string fname = TableFileName(dbname_, file_number);
     RandomAccessFile* file = nullptr;

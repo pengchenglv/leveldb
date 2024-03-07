@@ -57,6 +57,7 @@ bool SomeFileOverlapsRange(const InternalKeyComparator& icmp,
                            const Slice* smallest_user_key,
                            const Slice* largest_user_key);
 
+// version 本质上就是表示当前文件集合的状态
 class Version {
  public:
   struct GetStats {

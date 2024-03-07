@@ -40,6 +40,8 @@ void Footer::EncodeTo(std::string* dst) const {
   (void)original_size;  // Disable unused variable warning.
 }
 
+// 本质上就是得到meta index block
+// index block
 Status Footer::DecodeFrom(Slice* input) {
   if (input->size() < kEncodedLength) {
     return Status::Corruption("not an sstable (footer too short)");
@@ -54,6 +56,9 @@ Status Footer::DecodeFrom(Slice* input) {
     return Status::Corruption("not an sstable (bad magic number)");
   }
 
+  // datablock 需要 indexblock来索引
+  // index block是meta block的一种
+  // metablock需要metaindex 来索引
   Status result = metaindex_handle_.DecodeFrom(input);
   if (result.ok()) {
     result = index_handle_.DecodeFrom(input);
@@ -66,6 +71,7 @@ Status Footer::DecodeFrom(Slice* input) {
   return result;
 }
 
+// 使用哪个handle，就是去读那个类型block
 Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
                  const BlockHandle& handle, BlockContents* result) {
   result->data = Slice();
