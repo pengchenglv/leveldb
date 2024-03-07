@@ -370,6 +370,9 @@ class Compaction {
   VersionEdit edit_;
 
   // Each compaction reads inputs from "level_" and "level_+1"
+  // inputs_存放的都是需要compaction的文件
+  // 其中inputs_[0] 中存放的是level_层的文件
+  // inputs_[1]中存放的是level_+1层的文件
   std::vector<FileMetaData*> inputs_[2];  // The two sets of inputs
 
   // State used to check for number of overlapping grandparent files

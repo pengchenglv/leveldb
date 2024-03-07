@@ -525,6 +525,7 @@ void Version::GetOverlappingInputs(int level, const InternalKey* begin,
       if (level == 0) {
         // Level-0 files may overlap each other.  So check if the newly
         // added file has expanded the range.  If so, restart search.
+        // 确实会无限的做下去，只要满足条件，就一直做下去
         if (begin != nullptr && user_cmp->Compare(file_start, user_begin) < 0) {
           user_begin = file_start;
           inputs->clear();
@@ -1277,6 +1278,7 @@ Compaction* VersionSet::PickCompaction() {
     }
     if (c->inputs_[0].empty()) {
       // Wrap-around to the beginning of the key space
+      // 如果没找到，就用第一个file
       c->inputs_[0].push_back(current_->files_[level][0]);
     }
   } else if (seek_compaction) {
@@ -1291,6 +1293,7 @@ Compaction* VersionSet::PickCompaction() {
   c->input_version_->Ref();
 
   // Files in level 0 may overlap each other, so pick up all overlapping ones
+  // 提问，如果新加的overlap的文件又会接上新的文件，会不会导致无限扇出呢？
   if (level == 0) {
     InternalKey smallest, largest;
     GetRange(c->inputs_[0], &smallest, &largest);
