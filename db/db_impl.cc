@@ -51,6 +51,7 @@ struct DBImpl::Writer {
   port::CondVar cv;
 };
 
+// CompactionState中包含有Compaction，Compaction中包含了本次Compaction的元信息
 struct DBImpl::CompactionState {
   // Files produced by compaction
   struct Output {
@@ -912,6 +913,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
     compact->smallest_snapshot = snapshots_.oldest()->sequence_number();
   }
 
+  // 基于Compaction的元信息构造迭代器
   Iterator* input = versions_->MakeInputIterator(compact->compaction);
 
   // Release mutex while we're actually doing the compaction work
@@ -993,12 +995,16 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
     if (!drop) {
       // Open output file if necessary
+      // 在上一次写文件时，builder和file均被置空，所以要重新打开Compaction文件，并构造builder
       if (compact->builder == nullptr) {
         status = OpenCompactionOutputFile(compact);
         if (!status.ok()) {
           break;
         }
       }
+
+      // 只有当builder为空时，才会去设置smallest key
+      // 而largest key每次都会更新，因为从迭代器中取出的key都是有序的
       if (compact->builder->NumEntries() == 0) {
         compact->current_output()->smallest.DecodeFrom(key);
       }

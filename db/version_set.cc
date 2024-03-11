@@ -170,6 +170,8 @@ class Version::LevelFileNumIterator : public Iterator {
   void Seek(const Slice& target) override {
     index_ = FindFile(icmp_, *flist_, target);
   }
+  
+  // SeekToFirst原来如此简单，就是把index_置为0
   void SeekToFirst() override { index_ = 0; }
   void SeekToLast() override {
     index_ = flist_->empty() ? 0 : flist_->size() - 1;
@@ -1220,6 +1222,7 @@ void VersionSet::GetRange2(const std::vector<FileMetaData*>& inputs1,
   GetRange(all, smallest, largest);
 }
 
+// 构造input file的迭代器
 Iterator* VersionSet::MakeInputIterator(Compaction* c) {
   ReadOptions options;
   options.verify_checksums = options_->paranoid_checks;
@@ -1228,6 +1231,9 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
   // Level-0 files have to be merged together.  For other levels,
   // we will make a concatenating iterator per level.
   // TODO(opt): use concatenating iterator for level-0 if there is no overlap
+  
+  // 对于L0，每一个文件都需要一个迭代器
+  // 对非L0的，因为没有overlap，所以一个lelvl只需要一个迭代器
   const int space = (c->level() == 0 ? c->inputs_[0].size() + 1 : 2);
   Iterator** list = new Iterator*[space];
   int num = 0;
