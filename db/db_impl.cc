@@ -885,8 +885,10 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
       static_cast<long long>(compact->total_bytes));
 
   // Add compaction outputs
+  // 把需要删除的文件放到 edit里
   compact->compaction->AddInputDeletions(compact->compaction->edit());
   const int level = compact->compaction->level();
+  // 把outputs里的文件放到edit里
   for (size_t i = 0; i < compact->outputs.size(); i++) {
     const CompactionState::Output& out = compact->outputs[i];
     compact->compaction->edit()->AddFile(level + 1, out.number, out.file_size,
@@ -1051,6 +1053,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   stats_[compact->compaction->level() + 1].Add(stats);
 
   if (status.ok()) {
+    // compaction的最后阶段，安装compaction result
     status = InstallCompactionResults(compact);
   }
   if (!status.ok()) {

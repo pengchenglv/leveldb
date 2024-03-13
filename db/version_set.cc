@@ -675,6 +675,9 @@ class VersionSet::Builder {
   }
 
   // Save the current state in *v.
+  // 这个函数里用的base_是当前的version
+  // 而传参里的v是新建的，也及时空的
+  // SaveTo本质上就是把builder中的变更和_base version merge到一起
   void SaveTo(Version* v) {
     BySmallestKey cmp;
     cmp.internal_comparator = &vset_->icmp_;
@@ -698,6 +701,8 @@ class VersionSet::Builder {
       }
 
       // Add remaining base files
+      // 为什么会有这个逻辑呢？
+      // 因为上边的逻辑保证可以把added_files都加到合适的位置，但是version之前就有的file也需要加进来
       for (; base_iter != base_end; ++base_iter) {
         MaybeAddFile(v, level, *base_iter);
       }
@@ -725,6 +730,8 @@ class VersionSet::Builder {
       // File is deleted: do nothing
     } else {
       std::vector<FileMetaData*>* files = &v->files_[level];
+      // level为0时，无脑push_back
+      // level大于0时，需要check一下是否有overlap
       if (level > 0 && !files->empty()) {
         // Must not overlap
         assert(vset_->icmp_.Compare((*files)[files->size() - 1]->largest,
@@ -797,6 +804,7 @@ Status VersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
 
   Version* v = new Version(this);
   {
+    // VersionSet的内部类，使用versionSet和version来构造
     Builder builder(this, current_);
     builder.Apply(edit);
     builder.SaveTo(v);
@@ -1034,6 +1042,7 @@ void VersionSet::MarkFileNumberUsed(uint64_t number) {
   }
 }
 
+// 最后一步就是实际上就是计算下一次需要compaction的level和对应的分数
 void VersionSet::Finalize(Version* v) {
   // Precomputed best level for next compaction
   int best_level = -1;
@@ -1521,6 +1530,7 @@ bool Compaction::IsTrivialMove() const {
 void Compaction::AddInputDeletions(VersionEdit* edit) {
   for (int which = 0; which < 2; which++) {
     for (size_t i = 0; i < inputs_[which].size(); i++) {
+      // 此处的RemoveFile的本质就是在edit的deleted_files_里记录要删除的文件
       edit->RemoveFile(level_ + which, inputs_[which][i]->number);
     }
   }
