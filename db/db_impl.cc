@@ -233,10 +233,12 @@ void DBImpl::RemoveObsoleteFiles() {
   }
 
   // Make a set of all of the live files
+  // 收集所有live的文件，包括pending_outputs和version set中记录的live文件
   std::set<uint64_t> live = pending_outputs_;
   versions_->AddLiveFiles(&live);
 
   std::vector<std::string> filenames;
+  // 获取当前目录下所有的文件
   env_->GetChildren(dbname_, &filenames);  // Ignoring errors on purpose
   uint64_t number;
   FileType type;
@@ -244,6 +246,7 @@ void DBImpl::RemoveObsoleteFiles() {
   for (std::string& filename : filenames) {
     if (ParseFileName(filename, &number, &type)) {
       bool keep = true;
+      // 删除时，根据文件的类型来执行不同的判定方案
       switch (type) {
         case kLogFile:
           keep = ((number >= versions_->LogNumber()) ||
