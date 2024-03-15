@@ -20,6 +20,7 @@ Status BuildTable(const std::string& dbname, Env* env, const Options& options,
   meta->file_size = 0;
   iter->SeekToFirst();
 
+  // 生成文件名
   std::string fname = TableFileName(dbname, meta->number);
   if (iter->Valid()) {
     WritableFile* file;
@@ -28,6 +29,8 @@ Status BuildTable(const std::string& dbname, Env* env, const Options& options,
       return s;
     }
 
+    // 为什么一定要抽象出来一个TableBuilder呢？
+    // 因为从把key-value写到文件中，并非是简单的append，文件是有一定的格式的，需要一个builder来吃掉这部分逻辑
     TableBuilder* builder = new TableBuilder(options, file);
     meta->smallest.DecodeFrom(iter->key());
     Slice key;
