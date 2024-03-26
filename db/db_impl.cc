@@ -562,6 +562,7 @@ void DBImpl::CompactMemTable() {
   Version* base = versions_->current();
   base->Ref();
   // 把memtable写入file，然后放在合适的level，并且生成version edit
+  // compaction memtable的关键就是将文件写入L0
   Status s = WriteLevel0Table(imm_, &edit, base);
   base->Unref();
 
@@ -710,7 +711,7 @@ void DBImpl::BackgroundCall() {
 void DBImpl::BackgroundCompaction() {
   mutex_.AssertHeld();
 
-  // 先compact memtable
+  // 如果imm_不为空， 先compact memtable
   if (imm_ != nullptr) {
     CompactMemTable();
     return;
@@ -1217,6 +1218,8 @@ Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
 }
 
 Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
+  // WriteBatch表示要写的内容
+  // Writer比较包括要写的内容，还会去描述写的动作(sync,done等)
   Writer w(&mutex_);
   w.batch = updates;
   w.sync = options.sync;
@@ -1282,6 +1285,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
       ready->done = true;
       ready->cv.Signal();
     }
+    // 到这个位置时，就不要再pop_front了
     if (ready == last_writer) break;
   }
 
@@ -1346,6 +1350,12 @@ WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
 
 // REQUIRES: mutex_ is held
 // REQUIRES: this thread is currently at the front of the writer queue
+// 该函数中一个大while循环:
+// 1. 仅仅触发slow down
+// 2. memtable还有空间，返回
+// 3. immutableMemtable不为空，当compaction完成
+// 4. L0层文件达到触发compaction阈值, stop write
+// 5. 生成新的memtable
 Status DBImpl::MakeRoomForWrite(bool force) {
   mutex_.AssertHeld();
   assert(!writers_.empty());
@@ -1422,6 +1432,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       mem_ = new MemTable(internal_comparator_);
       mem_->Ref();
       force = false;  // Do not force another compaction if have room
+      // 生产了immutableTable，尝试触发compaction
       MaybeScheduleCompaction();
     }
   }
