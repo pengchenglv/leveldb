@@ -106,10 +106,12 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
     r->options.comparator->FindShortestSeparator(&r->last_key, key);
     std::string handle_encoding;
     r->pending_handle.EncodeTo(&handle_encoding);
+    // 对于index_block来说，value就是某个key的offest和size，这个值只有在flush之后才知道
     r->index_block.Add(r->last_key, Slice(handle_encoding));
     r->pending_index_entry = false;
   }
 
+  // 如果filter_block不为空，每次add key都会调用filter_block的AddKey
   if (r->filter_block != nullptr) {
     r->filter_block->AddKey(key);
   }
@@ -135,6 +137,7 @@ void TableBuilder::Flush() {
     r->pending_index_entry = true;
     r->status = r->file->Flush();
   }
+  // 一个datablock 写完以后，生成filter_block
   if (r->filter_block != nullptr) {
     r->filter_block->StartBlock(r->offset);
   }
@@ -147,6 +150,7 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
   //    crc: uint32
   assert(ok());
   Rep* r = rep_;
+  // finish很简单，就是把重启点的信息写入buffer_，每个重启点的值和重启点的个数
   Slice raw = block->Finish();
 
   Slice block_contents;
@@ -251,6 +255,7 @@ Status TableBuilder::Finish() {
       r->index_block.Add(r->last_key, Slice(handle_encoding));
       r->pending_index_entry = false;
     }
+    // 没有判断index_block大于size的处理方式
     WriteBlock(&r->index_block, &index_block_handle);
   }
 

@@ -68,6 +68,7 @@ Slice BlockBuilder::Finish() {
   return Slice(buffer_);
 }
 
+// 把key和value写到buffer_中，在这个过程中执行重启点压缩
 void BlockBuilder::Add(const Slice& key, const Slice& value) {
   Slice last_key_piece(last_key_);
   assert(!finished_);
@@ -83,6 +84,7 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
     }
   } else {
     // Restart compression
+    // 重启点记录的是buffer的大小
     restarts_.push_back(buffer_.size());
     counter_ = 0;
   }
