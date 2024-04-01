@@ -50,6 +50,7 @@ Status Table::Open(const Options& options, RandomAccessFile* file,
                         &footer_input, footer_space);
   if (!s.ok()) return s;
 
+  // Footer中有metaindx handle和index handle
   Footer footer;
   s = footer.DecodeFrom(&footer_input);
   if (!s.ok()) return s;

@@ -71,6 +71,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
       // We do not cache error results so that if the error is transient,
       // or somebody repairs the file, we recover automatically.
     } else {
+      // 将table和file作为handle，一起放到table_cache中
       TableAndFile* tf = new TableAndFile;
       tf->file = file;
       tf->table = table;

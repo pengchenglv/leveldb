@@ -199,6 +199,7 @@ void TableBuilder::WriteRawBlock(const Slice& block_contents,
                                  CompressionType type, BlockHandle* handle) {
   Rep* r = rep_;
   // 这个offset是上次WriteRawBlockd的offset，也就是当前block开始的地方
+  // 当前block开始的位置，就是上一次block写完的位置
   handle->set_offset(r->offset);
   handle->set_size(block_contents.size());
   r->status = r->file->Append(block_contents);
