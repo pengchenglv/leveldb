@@ -1146,6 +1146,7 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
   }
 
   MemTable* mem = mem_;
+  // 在rocksdb里，可以同时有几个imm_呢？
   MemTable* imm = imm_;
   Version* current = versions_->current();
   mem->Ref();
