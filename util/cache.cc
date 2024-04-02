@@ -232,6 +232,7 @@ void LRUCache::Ref(LRUHandle* e) {
   e->refs++;
 }
 
+// Uref中会调用用户定义的deleter来释放资源
 void LRUCache::Unref(LRUHandle* e) {
   assert(e->refs > 0);
   e->refs--;
