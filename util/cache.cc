@@ -40,9 +40,14 @@ namespace {
 
 // An entry is a variable length heap-allocated structure.  Entries
 // are kept in a circular doubly linked list ordered by access time.
+// LRUHandle 本质上就是缓存的item
 struct LRUHandle {
   void* value;
   void (*deleter)(const Slice&, void* value);
+  // 三个比较关键的指针
+  // next_hash指向同一个hash桶中链表的下一个元素
+  // next和prev，用于链表中
+  // 一个handle要么位于in_use 链表，要么位于lru链表
   LRUHandle* next_hash;
   LRUHandle* next;
   LRUHandle* prev;
@@ -113,6 +118,7 @@ class HandleTable {
   // matches key/hash.  If there is no such cache entry, return a
   // pointer to the trailing slot in the corresponding linked list.
   LRUHandle** FindPointer(const Slice& key, uint32_t hash) {
+    // 用位运算代替取余，性能会好一些
     LRUHandle** ptr = &list_[hash & (length_ - 1)];
     while (*ptr != nullptr && ((*ptr)->hash != hash || key != (*ptr)->key())) {
       ptr = &(*ptr)->next_hash;
@@ -294,6 +300,7 @@ Cache::Handle* LRUCache::Insert(const Slice& key, uint32_t hash, void* value,
     // next is read by key() in an assert, so it must be initialized
     e->next = nullptr;
   }
+  // 正常情况下，lrr删除node的逻辑是由insert驱动的
   while (usage_ > capacity_ && lru_.next != &lru_) {
     LRUHandle* old = lru_.next;
     assert(old->refs == 1);
