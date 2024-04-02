@@ -148,6 +148,8 @@ class HandleTable {
 };
 
 // A single shard of sharded cache.
+// 用hash map来lookup
+// 用链表来evict
 class LRUCache {
  public:
   LRUCache();
@@ -197,6 +199,7 @@ class LRUCache {
 
 LRUCache::LRUCache() : capacity_(0), usage_(0) {
   // Make empty circular linked lists.
+  // next和prev都指向自己，说明当前的链表为空
   lru_.next = &lru_;
   lru_.prev = &lru_;
   in_use_.next = &in_use_;
@@ -336,6 +339,8 @@ void LRUCache::Prune() {
 static const int kNumShardBits = 4;
 static const int kNumShards = 1 << kNumShardBits;
 
+// ShardedLRUCache 分多个子cache，这样可以减少对锁的竞争
+// capacity所有的分片均分的
 class ShardedLRUCache : public Cache {
  private:
   LRUCache shard_[kNumShards];

@@ -76,6 +76,8 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
       tf->file = file;
       tf->table = table;
       // 此处的key是file name，file就是sst
+      // 为什么要制定DeleteEntry呢？LRU在erase时，
+      // 需要调用DeleteEntry来释放table和file
       *handle = cache_->Insert(key, tf, 1, &DeleteEntry);
     }
   }
