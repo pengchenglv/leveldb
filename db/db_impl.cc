@@ -54,12 +54,18 @@ struct DBImpl::Writer {
 // CompactionState中包含有Compaction，Compaction中包含了本次Compaction的元信息
 struct DBImpl::CompactionState {
   // Files produced by compaction
+  // CompactionState的内部类，记录将要写入的文件的信息
+  // 四个字段，
+  // number字段，在生成output时，就填充了
+  // file_size 在最终finish的时候填充
+  // smallest和largest在迭代的过程中填充
   struct Output {
     uint64_t number;
     uint64_t file_size;
     InternalKey smallest, largest;
   };
 
+  // 所谓current_output，就是outputs中的最后一个元素
   Output* current_output() { return &outputs[outputs.size() - 1]; }
 
   explicit CompactionState(Compaction* c)
@@ -825,6 +831,7 @@ Status DBImpl::OpenCompactionOutputFile(CompactionState* compact) {
   }
 
   // Make the output file
+  // 新建output文件
   std::string fname = TableFileName(dbname_, file_number);
   Status s = env_->NewWritableFile(fname, &compact->outfile);
   if (s.ok()) {
@@ -974,12 +981,14 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
         last_sequence_for_key = kMaxSequenceNumber;
       }
 
+      // 为什么这里使用last_sequence_for_key呢? 而不是使用当前key的sequence num呢？
       if (last_sequence_for_key <= compact->smallest_snapshot) {
         // Hidden by an newer entry for same user key
         drop = true;  // (A)
       } else if (ikey.type == kTypeDeletion &&
                  ikey.sequence <= compact->smallest_snapshot &&
                  compact->compaction->IsBaseLevelForKey(ikey.user_key)) {
+        // 并不是type为deletetion就可以删除的，因为higher level可能还有相同的key
         // For this user key:
         // (1) there is no data in higher levels
         // (2) data in lower levels will have larger sequence numbers

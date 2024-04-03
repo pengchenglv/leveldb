@@ -203,6 +203,7 @@ class Version::LevelFileNumIterator : public Iterator {
  private:
   const InternalKeyComparator icmp_;
   const std::vector<FileMetaData*>* const flist_;
+  // 对于个迭代器来说，最关键的字段就是_index
   uint32_t index_;
 
   // Backing store for value().  Holds the file number and size.
@@ -221,8 +222,12 @@ static Iterator* GetFileIterator(void* arg, const ReadOptions& options,
   }
 }
 
+// 基于该level的所有文件，建立一个连续的迭起器
+// 该迭代器会遍历该level的所有文件的内容
 Iterator* Version::NewConcatenatingIterator(const ReadOptions& options,
                                             int level) const {
+  // NewTwoLevelIterator 并不是指leveldb的两层file，而是两个层次
+  // 一个是文件，一个是文件中内容
   return NewTwoLevelIterator(
       new LevelFileNumIterator(vset_->icmp_, &files_[level]), &GetFileIterator,
       vset_->table_cache_, options);
@@ -1203,6 +1208,7 @@ int64_t VersionSet::MaxNextLevelOverlappingBytes() {
 // Stores the minimal range that covers all entries in inputs in
 // *smallest, *largest.
 // REQUIRES: inputs is not empty
+// 获得该组文件的最大key和最小key
 void VersionSet::GetRange(const std::vector<FileMetaData*>& inputs,
                           InternalKey* smallest, InternalKey* largest) {
   assert(!inputs.empty());
