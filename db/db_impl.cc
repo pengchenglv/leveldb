@@ -983,6 +983,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
       // 为什么这里使用last_sequence_for_key呢? 而不是使用当前key的sequence num呢？
       // 难不成迭代的时候是先拿到seq num 较大的key value？理论上是的，但是是如何实现的呢？
+      // 对，这里并不是严格按照字典序，而是定义了InternalKeyComparator，当user key一样时，seq num大的key反而小
       // 只能这样比较，只要发现了较大，才有理由让较小的key value失效
       if (last_sequence_for_key <= compact->smallest_snapshot) {
         // Hidden by an newer entry for same user key
