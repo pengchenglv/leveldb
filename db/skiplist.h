@@ -263,9 +263,11 @@ SkipList<Key, Comparator>::FindGreaterOrEqual(const Key& key,
   int level = GetMaxHeight() - 1;
   while (true) {
     Node* next = x->Next(level);
+    // key 比当前节点的key大
     if (KeyIsAfterNode(key, next)) {
       // Keep searching in this list
       x = next;
+    // 一旦小于或者等于key，就往下层走
     } else {
       if (prev != nullptr) prev[level] = x;
       if (level == 0) {

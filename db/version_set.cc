@@ -1280,6 +1280,7 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
   return result;
 }
 
+// 所谓pickcompaction，本质上就是挑选文件，组成一个compaction
 Compaction* VersionSet::PickCompaction() {
   Compaction* c;
   int level;
@@ -1295,6 +1296,7 @@ Compaction* VersionSet::PickCompaction() {
     c = new Compaction(options_, level);
 
     // Pick the first file that comes after compact_pointer_[level]
+    // 每次只从需要compaction的level种挑选一个文件，所以需要compact_pointer_来记录位置
     for (size_t i = 0; i < current_->files_[level].size(); i++) {
       FileMetaData* f = current_->files_[level][i];
       if (compact_pointer_[level].empty() ||

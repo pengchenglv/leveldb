@@ -313,6 +313,8 @@ class VersionSet {
 
   // Per-level key at which the next compaction at that level should start.
   // Either an empty string, or a valid InternalKey.
+  // 为什么要搞一下compact_pointer呢？
+  // 首先compact_pointer是逐level的，
   std::string compact_pointer_[config::kNumLevels];
 };
 

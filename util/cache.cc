@@ -97,6 +97,7 @@ class HandleTable {
     return old;
   }
 
+  // 除非主动调用Erase，否则只能remove lru 链表中的元素
   LRUHandle* Remove(const Slice& key, uint32_t hash) {
     LRUHandle** ptr = FindPointer(key, hash);
     LRUHandle* result = *ptr;
@@ -291,6 +292,7 @@ Cache::Handle* LRUCache::Insert(const Slice& key, uint32_t hash, void* value,
   e->refs = 1;  // for the returned handle.
   std::memcpy(e->key_data, key.data(), key.size());
 
+  // 当usage_ 超过 capacity_时，insert还是可以成功的
   if (capacity_ > 0) {
     e->refs++;  // for the cache's reference.
     e->in_cache = true;
